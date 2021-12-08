@@ -23,15 +23,17 @@ int main(int argc, char **argv)
         // serial.c_str()
         tof::EmbeddedKeaCamera cam(tof::ProcessingConfig{});
         std::cout << "Connected with camera" << std::endl;
-        /*auto config = cam.get_camera_config();
+        auto config = cam.get_camera_config();
 
         config.reset();
         config.set_modulation_frequency(0, 50.0);
         config.set_integration_time(0, {300, 300, 300, 300});
         config.set_phase_shifts(0, {0.0, 0.25, 0.5, 0.75});
+        config.set_dac({750,0,750,100}); 
 
         cam.set_camera_config(config);
-        std::cout << "Uploaded new configuration " << std::endl;*/
+        std::cout << "Uploaded new configuration " << std::endl;
+
         size_t nstreams = tof::select_streams(cam, types);
         if (nstreams != 1)
         {
