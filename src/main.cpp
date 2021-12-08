@@ -13,6 +13,7 @@ namespace tof = chronoptics::tof;
 int main(int argc, char **argv)
 {
     cv::String window_name = "Intensity";
+    // There is the possibility that we need to stream more types ... 
     std::vector<tof::FrameType> types = {tof::FrameType::INTENSITY};
 
     try
@@ -52,6 +53,8 @@ int main(int argc, char **argv)
 
         cam.start();
         std::cout << "Camera is started" << std::endl;
+        cv::Mat disp_img; 
+        
         while (cam.is_streaming())
         {
             auto frames = cam.get_frames();
@@ -59,7 +62,7 @@ int main(int argc, char **argv)
             std::cout << "Frame count: " << frame.frame_count() << std::endl;
 
             cv::Mat img(frame.rows(), frame.cols(), CV_8UC1, frame.data());
-            cv::Mat disp_img; 
+            
             img.copyTo(disp_img); 
             // Now display the image
             cv::imshow(window_name, disp_img);
