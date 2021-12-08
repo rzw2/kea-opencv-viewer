@@ -12,16 +12,21 @@ namespace tof = chronoptics::tof;
 
 int main(int argc, char **argv)
 {
-    std::cout << "First camera look" << std::endl;
-    //std::string serial = "2020018";
     cv::String window_name = "Intensity";
     std::vector<tof::FrameType> types = {tof::FrameType::INTENSITY};
 
     try
     {
 
-        // serial.c_str()
+        auto proc = tof::ProcessingConfig();
+        proc.set_calibration_enabled(true); 
+        proc.set_intensity_scale(2.0f); 
+        
+
         tof::EmbeddedKeaCamera cam(tof::ProcessingConfig{});
+        //tof::KeaCamera cam(tof::ProcessingConfig{});
+        
+        
         std::cout << "Connected with camera" << std::endl;
         auto config = cam.get_camera_config();
 
@@ -29,6 +34,7 @@ int main(int argc, char **argv)
         config.set_modulation_frequency(0, 50.0);
         config.set_integration_time(0, {300, 300, 300, 300});
         config.set_phase_shifts(0, {0.0, 0.25, 0.5, 0.75});
+        config.set_duty_cycle(0, 0.5f); 
         config.set_dac({750,0,750,100}); 
 
         cam.set_camera_config(config);
@@ -40,8 +46,7 @@ int main(int argc, char **argv)
             std::cout << "WARNING: there are " << nstreams << " for intensity!" << std::endl;
         }
 
-        //cam.get_calibration();
-        //cam.set_calibration();
+        auto stream_list = cam.get_stream_list(); 
 
         cv::namedWindow(window_name, cv::WINDOW_NORMAL);
 
@@ -54,8 +59,10 @@ int main(int argc, char **argv)
             std::cout << "Frame count: " << frame.frame_count() << std::endl;
 
             cv::Mat img(frame.rows(), frame.cols(), CV_8UC1, frame.data());
+            cv::Mat disp_img; 
+            img.copyTo(disp_img); 
             // Now display the image
-            cv::imshow(window_name, img);
+            cv::imshow(window_name, disp_img);
 
             // If escape is selected then close
             if (cv::waitKey(10) == 27)
