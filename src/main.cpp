@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <exception>
+#include <chrono>
+#include <thread>
 
 #include <chronoptics/tof/kea_camera.hpp>
 #include <chronoptics/tof/kea.hpp>
@@ -11,8 +13,10 @@
 #include <opencv2/highgui.hpp>
 
 #include "cxxopts.hpp"
+#include "colormap.hpp"
 
 namespace tof = chronoptics::tof;
+using namespace std::chrono_literals;
 
 void get_frame(std::vector<tof::Data> &frames, const tof::FrameType frame_type, tof::Data &out_frame)
 {
@@ -36,8 +40,10 @@ int main(int argc, char **argv)
     cv::String rad_name = "Radial";
     cv::String bgr_name = "BGR";
     bool bgr = false;
+    float dmax;
+    float fps;
 
-    options.add_options()("h, help", "Help")("bgr", "Display the colour image", cxxopts::value<bool>(bgr)->default_value("false"));
+    options.add_options()("h, help", "Help")("bgr", "Display the colour image", cxxopts::value<bool>(bgr)->default_value("false"))("dmax", "Maximum distance", cxxopts::value<float>(dmax)->default_value("15.0"))("fps", "Depth frames per second", cxxopts::value<float>(fps)->default_value("20.0"));
 
     auto result = options.parse(argc, argv);
 
@@ -53,21 +59,25 @@ int main(int argc, char **argv)
         types.push_back(tof::FrameType::BGR);
     }
 
+    // The way to color the depth image with a JET colour map
+    std::array<std::array<uint8_t, 3>, 256> jet;
+    populate_colormap(jet);
+
     try
     {
 
         auto proc = tof::ProcessingConfig();
         proc.set_calibration_enabled(true);
-        proc.set_intensity_scale(1.0f);
+        proc.set_intensity_scale(5.0f);
 
         tof::EmbeddedKeaCamera cam(tof::ProcessingConfig{});
         // tof::KeaCamera cam(tof::ProcessingConfig{});
 
         // Configure the camera
         tof::UserConfig user{};
-        user.set_fps(20.0);
+        user.set_fps(fps);
         user.set_integration_time(tof::IntegrationTime::MEDIUM);
-        user.set_max_distance(15.0);
+        user.set_max_distance(dmax);
         user.set_environment(tof::ImagingEnvironment::INSIDE);
         user.set_strategy(tof::Strategy::BALANCED);
 
@@ -80,6 +90,7 @@ int main(int argc, char **argv)
 
         // Generate the ToF ISP filtering settings
         proc = config.default_processing();
+        proc.set_intensity_scale(5.0);
 
         // Set the camera settings
         cam.set_camera_config(config);
@@ -105,25 +116,29 @@ int main(int argc, char **argv)
 
         if (bgr)
         {
-            cv::namedWindow(bgr_name, cv::WINDOW_NORMAL);
+            cv::namedWindow(bgr_name, cv::WINDOW_AUTOSIZE);
         }
-        cv::namedWindow(intensity_name, cv::WINDOW_NORMAL);
-        cv::namedWindow(rad_name, cv::WINDOW_NORMAL);
+        cv::namedWindow(intensity_name, cv::WINDOW_AUTOSIZE);
+        cv::namedWindow(rad_name, cv::WINDOW_AUTOSIZE);
 
         cam.start();
         cv::Mat disp_img;
         cv::Mat rad_disp;
+        cv::Mat rgb_disp;
 
         while (cam.is_streaming())
         {
             std::vector<tof::Data> frames = cam.get_frames();
             std::cout << "Frame count: " << frames.at(0).frame_count() << std::endl;
+
+            // std::this_thread::sleep_for(200ms);
             for (auto &frame : frames)
             {
                 if (frame.frame_type() == tof::FrameType::RADIAL)
                 {
                     cv::Mat rad_img(frame.rows(), frame.cols(), CV_16UC1, frame.data());
-                    rad_img.convertTo(rad_disp, CV_8UC1, 1.0 / 255.0);
+                    convert_image(rad_img, rad_disp, 0, 65535, jet);
+                    // rad_img.convertTo(rad_disp, CV_8UC1, 1.0 / 255.0);
 
                     cv::imshow(rad_name, rad_disp);
                 }
@@ -132,7 +147,9 @@ int main(int argc, char **argv)
                     if (bgr)
                     {
                         cv::Mat bgr_img(frame.rows(), frame.cols(), CV_8UC3, frame.data());
-                        cv::imshow(bgr_name, bgr_img);
+                        // Without copying the program crashes ...
+                        bgr_img.copyTo(rgb_disp);
+                        cv::imshow(bgr_name, rgb_disp);
                     }
                 }
                 else if (frame.frame_type() == tof::FrameType::INTENSITY)

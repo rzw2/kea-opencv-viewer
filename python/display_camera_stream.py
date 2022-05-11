@@ -9,11 +9,13 @@ For issues and support please contact me, Refael Whyte: r.whyte@chronoptics.com
 # This is a hacky way to get on camera python working, as OpenMP linking isn't working
 import numpy as np
 import matplotlib.pyplot as plt
-import chronoptics.tof as tof
+
 import ctypes
 from ctypes.util import find_library
 tmp_lib = find_library("gomp")
-ctypes.CDLL(tmp_lib, mode=ctypes.RTLD_GLOBAL)
+if tmp_lib != None:
+    ctypes.CDLL(tmp_lib, mode=ctypes.RTLD_GLOBAL)
+    import chronoptics.tof as tof
 
 
 def handle_close(evt):
