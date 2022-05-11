@@ -9,8 +9,8 @@ The Kea Yocto layer provides the recipe to build this project and add it to the 
 
 ## Build 
 To build, you need to source the Yocto SDK to find the dependencies and cross-compile for aarch64
-> mkdir build && cd build \ 
-> cmake ../ \  
+> mkdir build && cd build  
+> cmake ../   
 > make 
 
 To run on the camera 
